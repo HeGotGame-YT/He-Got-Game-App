@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>HE GOT GAME — Dante Azzacinto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0a0f; color: #e8e8f0; font-family: 'Barlow Condensed', sans-serif; }
+    input, select, textarea { font-family: 'Barlow Condensed', sans-serif; color: #e8e8f0; }
+    select option { background: #16162a; color: #e8e8f0; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #16162a; }
+    ::-webkit-scrollbar-thumb { background: #3a3a5c; border-radius: 2px; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState } = React;
+
+const ALL_PHASES = [
+  { id: "highschool", label: "High School", flag: "🏫", color: "#f59e0b", age: 18 },
+  { id: "college", label: "College", flag: "🎓", color: "#3b82f6", age: 19 },
+  { id: "freeagent", label: "Free Agent / CBA", flag: "🔍", color: "#ef4444", age: 20 },
+  { id: "acb", label: "Liga ACB", flag: "🇪🇸", color: "#f97316", age: 21 },
+  { id: "euroleague", label: "Euroleague", flag: "🌍", color: "#8b5cf6", age: 22 },
+  { id: "nba", label: "NBA", flag: "🇺🇸", color: "#22c55e", age: 23 },
+  { id: "mondiali", label: "Mondiali FIBA", flag: "🌐", color: "#06b6d4", age: null },
+  { id: "olimpiadi", label: "Olimpiadi", flag: "🏅", color: "#f59e0b", age: null },
+];
+
+const ATTR_GROUPS = [
+  { label: "Tiro", color: "#f59e0b", keys: [
+    "sottocanestro", "schiacciata", "tiroVicino", "mediaDistanza", "trePunti",
+    "tiroLibero", "gancioPost", "fadeawayPost", "qiTiro"
+  ]},
+  { label: "Palleggio & Passaggio", color: "#3b82f6", keys: [
+    "controlloPalla", "velocitaPalla", "mani", "passaggio", "qiPassaggio",
+    "visione", "costanzaOffensiva", "controlloPost", "fallo"
+  ]},
+  { label: "Difesa", color: "#ef4444", keys: [
+    "difesaInterna", "difesaPerimetro", "rubaPalla", "stoppata",
+    "rimbalzoOffensivo", "rimbalzoDifensivo", "qiAiutoDifensivo",
+    "percezionePass", "costanzaDifensiva"
+  ]},
+  { label: "Fisico", color: "#22c55e", keys: [
+    "velocita", "agilita", "forza", "verticale", "resistenza", "fisico", "giocoDuro"
+  ]},
+];
+
+const ATTR_LABELS = {
+  sottocanestro: "Sottocanestro", schiacciata: "Schiacciata", tiroVicino: "Tiro da vicino",
+  mediaDistanza: "Media distanza", trePunti: "Tiro da 3", tiroLibero: "Tiro libero",
+  gancioPost: "Gancio in post", fadeawayPost: "Fadeaway in post", qiTiro: "QI tiro",
+  controlloPalla: "Controllo palla", velocitaPalla: "Velocità con la palla", mani: "Mani",
+  passaggio: "Passaggio", qiPassaggio: "QI passaggio", visione: "Visione",
+  costanzaOffensiva: "Costanza offensiva", controlloPost: "Controllo in post", fallo: "Fallo",
+  difesaInterna: "Difesa interna", difesaPerimetro: "Difesa sul perimetro", rubaPalla: "Ruba palla",
+  stoppata: "Stoppata", rimbalzoOffensivo: "Rimbalzo offensivo", rimbalzoDifensivo: "Rimbalzo difensivo",
+  qiAiutoDifensivo: "QI aiuto difensivo", percezionePass: "Percezione pass", costanzaDifensiva: "Costanza difensiva",
+  velocita: "Velocità", agilita: "Agilità", forza: "Forza", verticale: "Verticale",
+  resistenza: "Resistenza", fisico: "Fisico", giocoDuro: "Gioco duro",
+};
+
+const DEFAULT_ATTRS = () => {
+  const a = { overall: 70 };
+  Object.keys(ATTR_LABELS).forEach(k => { a[k] = 60; });
+  return a;
+};
+
+const BADGE_LIST = [
+  "Tight Handles","Quick First Step","Floor General","Dimer","Needle Threader",
+  "Catch & Shoot","Hot Zone Hunter","Clutch Shooter","Intimidator","Clamps",
+  "Pick Pocket","Tireless Defender","Acrobat","Slithery Finisher","Chef",
+];
+
+const MATCH_OBJ_OFF = [
+  { id:"o1", label:"Segna 3+ triple", reward:"+3 pts (Tiro)" },
+  { id:"o2", label:"Tira con >50% dal campo", reward:"+3 pts (Tiro)" },
+  { id:"o3", label:"8+ assist", reward:"+3 pts (Passaggio)" },
+  { id:"o4", label:"0 turnover", reward:"+3 pts (Controllo)" },
+  { id:"o5", label:"Max 1 turnover", reward:"+2 pts (Controllo)" },
+  { id:"o6", label:"30+ punti", reward:"+3 pts (Tiro)" },
+  { id:"o7", label:"10+ assist", reward:"+4 pts (Passaggio)" },
+  { id:"o8", label:"Segna 5+ triple", reward:"+4 pts (Tiro)" },
+];
+const MATCH_OBJ_DEF = [
+  { id:"d1", label:"Limita avversario a max 10 punti", reward:"+3 pts (Difesa)" },
+  { id:"d2", label:"3+ palle rubate", reward:"+3 pts (Difesa)" },
+  { id:"d3", label:"8+ rimbalzi", reward:"+3 pts (Rimbalzo)" },
+  { id:"d4", label:"Gioca 35+ minuti", reward:"+3 pts (Fisico)" },
+  { id:"d5", label:"2+ stoppate", reward:"+2 pts (Difesa)" },
+  { id:"d6", label:"Chiudi con +/- positivo", reward:"+2 pts (Fisico)" },
+  { id:"d7", label:"4+ palle rubate", reward:"+4 pts (Difesa)" },
+  { id:"d8", label:"5+ rimbalzi difensivi", reward:"+3 pts (Rimbalzo)" },
+];
+
+const SEASONAL_AWARDS = [
+  { id:"s1", label:"MVP Partita", badge:"bronze", pts:0 },
+  { id:"s2", label:"Giocatore della Settimana", badge:"silver", pts:2 },
+  { id:"s3", label:"Giocatore del Mese", badge:"silver", pts:3 },
+  { id:"s4", label:"All-Star Selection", badge:"silver", pts:4 },
+  { id:"s5", label:"Rookie of the Year", badge:"gold", pts:5 },
+  { id:"s6", label:"MVP Stagione", badge:"gold", pts:6 },
+  { id:"s7", label:"Campione", badge:"gold", pts:5 },
+  { id:"s8", label:"Miglior Difensore", badge:"silver", pts:3 },
+  { id:"s9", label:"MVP Mondiali / Olimpiadi", badge:"gold", pts:5 },
+];
+
+const BADGE_TIER = {
+  bronze: { label:"Bronzo", color:"#cd7f32", emoji:"🥉" },
+  silver: { label:"Argento", color:"#c0c0c0", emoji:"🥈" },
+  gold: { label:"Oro", color:"#f59e0b", emoji:"🥇" },
+};
+
+const ROLE_WEIGHTS = {
+  PG: {
+    sottocanestro:3, schiacciata:2, tiroVicino:4, mediaDistanza:5, trePunti:6,
+    tiroLibero:4, gancioPost:1, fadeawayPost:1, qiTiro:5,
+    controlloPalla:8, velocitaPalla:7, mani:4, passaggio:6, qiPassaggio:6,
+    visione:5, costanzaOffensiva:4, controlloPost:1, fallo:2,
+    difesaInterna:2, difesaPerimetro:5, rubaPalla:5, stoppata:1,
+    rimbalzoOffensivo:1, rimbalzoDifensivo:2, qiAiutoDifensivo:4,
+    percezionePass:4, costanzaDifensiva:4,
+    velocita:6, agilita:5, forza:2, verticale:3, resistenza:4, fisico:3, giocoDuro:2,
+  },
+  SG: {
+    trePunti:9, mediaDistanza:7, tiroVicino:6, tiroLibero:3,
+    costanzaOffensiva:8, qiTiro:8,
+    velocita:7, forza:1, agilita:6, verticale:7, giocoDuro:4, resistenza:4, fisico:2,
+    sottocanestro:6, schiacciata:8, gancioPost:1, fadeawayPost:1, controlloPost:1, fallo:4, mani:5,
+    controlloPalla:5, velocitaPalla:5, passaggio:2, visione:1, qiPassaggio:2,
+    stoppata:1, rubaPalla:4, percezionePass:3, difesaInterna:1, difesaPerimetro:7, costanzaDifensiva:4, qiAiutoDifensivo:3,
+    rimbalzoDifensivo:1, rimbalzoOffensivo:1,
+  },
+  SF: {
+    trePunti:7, mediaDistanza:8, tiroVicino:6, tiroLibero:4,
+    costanzaOffensiva:7, qiTiro:7,
+    velocita:5, forza:4, agilita:5, verticale:4, giocoDuro:4, resistenza:4, fisico:4,
+    sottocanestro:5, schiacciata:4, gancioPost:2, fadeawayPost:5, controlloPost:4, fallo:3, mani:5,
+    controlloPalla:4, velocitaPalla:3, passaggio:3, visione:2, qiPassaggio:3,
+    stoppata:2, rubaPalla:7, percezionePass:4, difesaInterna:3, difesaPerimetro:7, costanzaDifensiva:5, qiAiutoDifensivo:5,
+    rimbalzoDifensivo:3, rimbalzoOffensivo:1,
+  },
+  PF: {
+    trePunti:3, mediaDistanza:3, tiroVicino:7, tiroLibero:2,
+    costanzaOffensiva:6, qiTiro:5,
+    velocita:5, forza:8, agilita:5, verticale:6, giocoDuro:6, resistenza:6, fisico:6,
+    sottocanestro:8, schiacciata:7, gancioPost:4, fadeawayPost:3, controlloPost:6, fallo:5, mani:4,
+    controlloPalla:3, velocitaPalla:2, passaggio:4, visione:4, qiPassaggio:5,
+    stoppata:4, rubaPalla:3, percezionePass:4, difesaInterna:7, difesaPerimetro:4, costanzaDifensiva:5, qiAiutoDifensivo:6,
+    rimbalzoDifensivo:7, rimbalzoOffensivo:5,
+  },
+  C: {
+    trePunti:1, mediaDistanza:2, tiroVicino:7, tiroLibero:2,
+    costanzaOffensiva:3, qiTiro:3,
+    velocita:2, forza:8, agilita:2, verticale:6, giocoDuro:5, resistenza:5, fisico:6,
+    sottocanestro:6, schiacciata:7, gancioPost:6, fadeawayPost:2, controlloPost:6, fallo:2, mani:3,
+    controlloPalla:1, velocitaPalla:1, passaggio:2, visione:1, qiPassaggio:1,
+    stoppata:8, rubaPalla:1, percezionePass:4, difesaInterna:9, difesaPerimetro:1, costanzaDifensiva:5, qiAiutoDifensivo:6,
+    rimbalzoDifensivo:10, rimbalzoOffensivo:8,
+  },
+};
+
+function calcOvr(attrs, role) {
+  const weights = ROLE_WEIGHTS[role] || ROLE_WEIGHTS.PG;
+  const keys = Object.keys(ATTR_LABELS);
+  const totalWeight = keys.reduce((a,k)=>a+(weights[k]||3),0);
+  const weighted = keys.reduce((a,k)=>a+(Number(attrs[k]||60)*(weights[k]||3)),0);
+  return Math.round(weighted/totalWeight);
+}
+
+const getRandObjs = () => [
+  MATCH_OBJ_OFF[Math.floor(Math.random()*MATCH_OBJ_OFF.length)],
+  MATCH_OBJ_DEF[Math.floor(Math.random()*MATCH_OBJ_DEF.length)],
+];
+
+const SAVE_KEY = "giramondo_v3";
+const loadSave = () => { try { const r = localStorage.getItem(SAVE_KEY); return r ? JSON.parse(r) : null; } catch(e) { return null; } };
+
+const initPlayer = () => ({
+  name: "", nationality: "🇮🇹 Italiano", height: "185", weight: "80", role: "PG",
+  currentPhase: null,
+  unlockedPhases: [],
+  attrs: DEFAULT_ATTRS(),
+  badges: [],
+  awardBadges: [],
+  seasons: {},
+  diary: [],
+  devPoints: 0,
+  matchLog: [],
+  currentObjectives: getRandObjs(),
+  agent: { name:"", agency:"", level:"Piccolo", commission:"", since:"", note:"" },
+  agentHistory: [],
+  interests: [],
+  sponsorships: [],
+  events: [],
+  age: 18,
+});
+
+const labelStyle = { display:"block", fontSize:10, color:"#8888aa", letterSpacing:2, textTransform:"uppercase", marginBottom:4, marginTop:10 };
+const inputStyle = { width:"100%", background:"#16162a", border:"1px solid #2e2e4a", borderRadius:6, color:"#e8e8f0", padding:"9px 12px", fontSize:14, fontFamily:"'Barlow Condensed', sans-serif", outline:"none" };
+const btnStyle = (bg) => ({ padding:"8px 16px", background:bg+"22", border:`1px solid ${bg}`, color:bg, borderRadius:6, cursor:"pointer", fontSize:12, fontWeight:700, letterSpacing:1, textTransform:"uppercase", fontFamily:"'Barlow Condensed', sans-serif" });
+
+function StatBar({ value, color="#f59e0b" }) {
+  return (
+    <div style={{ background:"#1e1e32", borderRadius:4, height:6, width:"100%", overflow:"hidden" }}>
+      <div style={{ width:`${Math.min(100,(value/99)*100)}%`, height:"100%", background:color, borderRadius:4, transition:"width 0.3s" }} />
+    </div>
+  );
+}
+
+function OvrBadge({ value, color }) {
+  const c = color || (value>=85?"#22c55e":value>=75?"#f59e0b":value>=65?"#3b82f6":"#ef4444");
+  return (
+    <div style={{ width:72, height:72, borderRadius:"50%", border:`3px solid ${c}`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", background:"#0a0a0f", boxShadow:`0 0 20px ${c}44`, flexShrink:0 }}>
+      <span style={{ fontSize:22, fontWeight:900, color:c }}>{value}</span>
+      <span style={{ fontSize:9, color:"#8888aa", letterSpacing:1 }}>OVR</span>
+    </div>
+  );
+}
+
+function App() {
+  const saved = loadSave();
+  const [player, setPlayer] = useState(saved);
+  const [view, setView] = useState(saved ? "dashboard" : "setup");
+  const [setup, setSetup] = useState({ name:"", nationality:"🇮🇹 Italiano", height:"185", weight:"80", role:"PG" });
+  const [attrEdit, setAttrEdit] = useState(false);
+  const [tempAttrs, setTempAttrs] = useState({});
+  const [editProfile, setEditProfile] = useState(false);
+  const [tempProfile, setTempProfile] = useState({});
+  const [newSeason, setNewSeason] = useState({ phase:"", team:"", year:"", gp:"", pts:"", reb:"", ast:"", stl:"", blk:"", to:"", fg:"", three:"", ft:"" });
+  const [newEntry, setNewEntry] = useState({ phase:"", title:"", text:"", emoji:"⭐" });
+  const [matchPerf, setMatchPerf] = useState({ pts:"", ast:"", reb:"", stl:"", to:"", fgPct:"", threesMade:"", min:"", plusMinus:"", obj1done:false, obj2done:false });
+  const [spendPoints, setSpendPoints] = useState(false);
+  const [spendAttr, setSpendAttr] = useState("trePunti");
+  const [spendAmt, setSpendAmt] = useState(1);
+  const [showAddPhase, setShowAddPhase] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
+
+  const EMOJIS = ["⭐","🏀","🔥","💔","🎯","🏆","✈️","😤","🙏","⚡","🤝","💪","🌙","🎭","🏅"];
+  const NATS = ["🇮🇹 Italiano","🇫🇷 Francese","🇩🇪 Tedesco","🇪🇸 Spagnolo","🇵🇹 Portoghese","🇸🇮 Sloveno","🇷🇸 Serbo","🇭🇷 Croato","🇧🇦 Bosniaco","🇲🇪 Montenegrino","🇬🇷 Greco","🇹🇷 Turco","🇱🇹 Lituano","🇱🇻 Lettone","🇷🇺 Russo","🇺🇦 Ucraino","🇧🇷 Brasiliano","🇦🇷 Argentino","🇨🇦 Canadese","🇺🇸 Americano","🇦🇺 Australiano","🇳🇬 Nigeriano","🇨🇲 Camerunese","🇸🇳 Senegalese","🇨🇳 Cinese","🇯🇵 Giapponese","🇵🇭 Filippino"];
+
+  function save(p) { try { localStorage.setItem(SAVE_KEY, JSON.stringify(p)); setSaveMsg("✓"); setTimeout(()=>setSaveMsg(""),1500); } catch(e){} }
+  function updatePlayer(fn) { setPlayer(prev => { const next = typeof fn==="function"?fn(prev):fn; save(next); return next; }); }
+
+  function startCareer() {
+    if (!setup.name.trim()) return;
+    const p = initPlayer();
+    Object.assign(p, setup);
+    save(p); setPlayer(p); setView("dashboard");
+  }
+
+  function unlockPhase(phaseId) {
+    const ph = ALL_PHASES.find(p=>p.id===phaseId);
+    updatePlayer(prev => ({
+      ...prev,
+      currentPhase: phaseId,
+      age: ph.age || prev.age,
+      unlockedPhases: prev.unlockedPhases.includes(phaseId) ? prev.unlockedPhases : [...prev.unlockedPhases, phaseId],
+    }));
+    setShowAddPhase(false);
+  }
+
+  function saveAttrs() {
+    const ovr = calcOvr(tempAttrs, player.role||"PG");
+    updatePlayer(prev=>({...prev, attrs:{...tempAttrs, overall:ovr}}));
+    setAttrEdit(false);
+  }
+
+  function addSeason() {
+    const key = `${newSeason.phase}_${Date.now()}`;
+    updatePlayer(prev=>({...prev, seasons:{...prev.seasons,[key]:{...newSeason}}}));
+    setNewSeason({phase:"",team:"",year:"",gp:"",pts:"",reb:"",ast:"",stl:"",blk:"",to:"",fg:"",three:"",ft:""});
+    setView("seasons");
+  }
+
+  function addDiary() {
+    if (!newEntry.title.trim()) return;
+    updatePlayer(prev=>({...prev, diary:[...prev.diary,{...newEntry,id:Date.now(),date:new Date().toLocaleDateString("it-IT")}]}));
+    setNewEntry({phase:"",title:"",text:"",emoji:"⭐"});
+    setView("diary");
+  }
+
+  function toggleBadge(b) { updatePlayer(prev=>({...prev,badges:prev.badges.includes(b)?prev.badges.filter(x=>x!==b):[...prev.badges,b]})); }
+
+  function submitMatch() {
+    const pts=Number(matchPerf.pts)||0, to=Number(matchPerf.to)||0, fg=Number(matchPerf.fgPct)||0, pm=Number(matchPerf.plusMinus)||0;
+    const ast=Number(matchPerf.ast)||0, reb=Number(matchPerf.reb)||0;
+    const dd = (pts>=10&&ast>=10)||(pts>=10&&reb>=10)||(ast>=10&&reb>=10);
+    const td = pts>=10&&ast>=10&&reb>=10;
+    const penalty = pts<5||to>=5||fg<20||pm<=-20;
+    let earned = 0;
+    if (!penalty) {
+      if (td) earned+=10; else if (dd) earned+=5;
+      if (pts>=25) earned+=4; else if (pts>=15) earned+=2; else if (pts>=10) earned+=1;
+      if (matchPerf.obj1done) earned+=3;
+      if (matchPerf.obj2done) earned+=3;
+    } else { earned=-2; }
+    updatePlayer(prev=>({...prev, devPoints:Math.max(0,(prev.devPoints||0)+earned), matchLog:[...(prev.matchLog||[]),{...matchPerf,pts,result:penalty?"penalty":"ok",earned,date:new Date().toLocaleDateString("it-IT")}], currentObjectives:getRandObjs()}));
+    setMatchPerf({pts:"",ast:"",reb:"",stl:"",to:"",fgPct:"",threesMade:"",min:"",plusMinus:"",obj1done:false,obj2done:false});
+  }
+
+  function spendDev() {
+    if ((player.devPoints||0)<spendAmt) return;
+    const newVal = Math.min(99,(player.attrs[spendAttr]||0)+spendAmt);
+    const newAttrs = {...player.attrs,[spendAttr]:newVal};
+    const ovr = calcOvr(newAttrs, player.role||"PG");
+    updatePlayer(prev=>({...prev,devPoints:prev.devPoints-spendAmt,attrs:{...newAttrs,overall:ovr}}));
+    setSpendPoints(false);
+  }
+
+  function addAward(award) {
+    updatePlayer(prev=>({...prev, devPoints:(prev.devPoints||0)+award.pts, awardBadges:[...(prev.awardBadges||[]),{...award,date:new Date().toLocaleDateString("it-IT"),phase:prev.currentPhase}]}));
+  }
+
+  const currentPhase = player ? ALL_PHASES.find(p=>p.id===player.currentPhase) : null;
+  const navItems = [
+    {id:"dashboard",label:"Home",icon:"🏠"},
+    {id:"objectives",label:"Obiettivi",icon:"🎯"},
+    {id:"attrs",label:"Attributi",icon:"📊"},
+    {id:"seasons",label:"Stagioni",icon:"📅"},
+    {id:"diary",label:"Diario",icon:"📖"},
+    {id:"agent",label:"Agente",icon:"🤝"},
+  ];
+
+  // SETUP
+  if (!player) return (
+    <div style={{minHeight:"100vh",background:"#0a0a0f",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+      <div style={{width:"100%",maxWidth:480}}>
+        <div style={{textAlign:"center",marginBottom:40}}>
+          <div style={{fontSize:52,marginBottom:8}}>🌍🏀</div>
+          <h1 style={{fontSize:44,fontWeight:900,color:"#e8e8f0",letterSpacing:3,textTransform:"uppercase"}}>HE GOT GAME</h1>
+          <p style={{color:"#f59e0b",fontSize:13,letterSpacing:4,margin:"6px 0 0",textTransform:"uppercase"}}>MyCareer — Road to NBA</p>
+        </div>
+        <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:28}}>
+          <h2 style={{color:"#f59e0b",fontSize:16,letterSpacing:3,margin:"0 0 16px",textTransform:"uppercase"}}>Crea il tuo giocatore</h2>
+          <label style={labelStyle}>Nome</label>
+          <input style={inputStyle} placeholder="Es. Dante Azzacinto" value={setup.name} onChange={e=>setSetup(p=>({...p,name:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&startCareer()} />
+          <label style={labelStyle}>Ruolo</label>
+          <select style={inputStyle} value={setup.role} onChange={e=>setSetup(p=>({...p,role:e.target.value}))}>
+            {["PG","SG","SF","PF","C"].map(r=><option key={r}>{r}</option>)}
+          </select>
+          <label style={labelStyle}>Nazionalità</label>
+          <select style={inputStyle} value={setup.nationality} onChange={e=>setSetup(p=>({...p,nationality:e.target.value}))}>
+            {NATS.map(n=><option key={n}>{n}</option>)}
+          </select>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            <div><label style={labelStyle}>Altezza (cm)</label><input style={inputStyle} value={setup.height} onChange={e=>setSetup(p=>({...p,height:e.target.value}))} /></div>
+            <div><label style={labelStyle}>Peso (kg)</label><input style={inputStyle} value={setup.weight} onChange={e=>setSetup(p=>({...p,weight:e.target.value}))} /></div>
+          </div>
+          <button onClick={startCareer} style={{width:"100%",marginTop:20,padding:"14px 0",background:setup.name.trim()?"#f59e0b":"#1e1e32",color:setup.name.trim()?"#000":"#555",border:"none",borderRadius:8,fontSize:16,fontWeight:900,letterSpacing:2,textTransform:"uppercase",cursor:setup.name.trim()?"pointer":"not-allowed",fontFamily:"'Barlow Condensed', sans-serif"}}>
+            INIZIA LA CARRIERA →
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0a0a0f",paddingBottom:80}}>
+      {/* HEADER */}
+      <div style={{background:"#0d0d1a",borderBottom:"1px solid #2e2e4a",padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
+        <div>
+          <div style={{fontSize:20,fontWeight:900,letterSpacing:1,color:"#e8e8f0"}}>{player.name}</div>
+          <div style={{fontSize:11,color:currentPhase?.color||"#8888aa",letterSpacing:1,textTransform:"uppercase"}}>
+            {currentPhase?`${currentPhase.flag} ${currentPhase.label} · ${player.role||"PG"} · ${player.age} anni`:`${player.role||"PG"} · ${player.age} anni`}
+            {saveMsg&&<span style={{color:"#22c55e",marginLeft:8}}>{saveMsg}</span>}
+          </div>
+        </div>
+        <OvrBadge value={player.attrs.overall} color={currentPhase?.color} />
+      </div>
+
+      {/* FASI SBLOCCATE */}
+      <div style={{padding:"10px 12px",borderBottom:"1px solid #16162a",overflowX:"auto"}}>
+        <div style={{display:"flex",gap:6,minWidth:"max-content",alignItems:"center"}}>
+          {player.unlockedPhases.map(phId=>{
+            const ph = ALL_PHASES.find(p=>p.id===phId);
+            if (!ph) return null;
+            const active = ph.id===player.currentPhase;
+            return (
+              <button key={ph.id} onClick={()=>updatePlayer(prev=>({...prev,currentPhase:ph.id,age:ph.age||prev.age}))} style={{padding:"5px 10px",borderRadius:20,border:`1px solid ${active?ph.color:"#2e2e4a"}`,background:active?ph.color+"22":"transparent",color:active?ph.color:"#8888aa",fontSize:11,letterSpacing:1,fontWeight:700,cursor:"pointer",fontFamily:"'Barlow Condensed', sans-serif",textTransform:"uppercase",whiteSpace:"nowrap"}}>
+                {ph.flag} {ph.label}
+              </button>
+            );
+          })}
+          <button onClick={()=>setShowAddPhase(true)} style={{padding:"5px 10px",borderRadius:20,border:"1px dashed #3a3a5c",background:"transparent",color:"#3a3a5c",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed', sans-serif",whiteSpace:"nowrap"}}>
+            + Fase
+          </button>
+        </div>
+      </div>
+
+      {/* MODAL AGGIUNGI FASE */}
+      {showAddPhase&&(
+        <div style={{position:"fixed",inset:0,background:"#000000cc",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center",padding:20}}>
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:24,width:"100%",maxWidth:400}}>
+            <div style={{fontSize:14,color:"#f59e0b",letterSpacing:2,textTransform:"uppercase",marginBottom:16}}>Sblocca nuova fase</div>
+            {ALL_PHASES.filter(ph=>!player.unlockedPhases.includes(ph.id)).map(ph=>(
+              <button key={ph.id} onClick={()=>unlockPhase(ph.id)} style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"#0d0d1a",border:`1px solid ${ph.color}44`,borderRadius:8,padding:"12px 14px",color:"#e8e8f0",cursor:"pointer",marginBottom:8,fontFamily:"'Barlow Condensed', sans-serif",fontSize:14}}>
+                <span style={{fontSize:20}}>{ph.flag}</span>
+                <div style={{textAlign:"left"}}>
+                  <div style={{fontWeight:700}}>{ph.label}</div>
+                  {ph.age&&<div style={{fontSize:10,color:"#8888aa"}}>età consigliata: {ph.age} anni</div>}
+                </div>
+              </button>
+            ))}
+            <button onClick={()=>setShowAddPhase(false)} style={{...btnStyle("#8888aa"),width:"100%",marginTop:8}}>Annulla</button>
+          </div>
+        </div>
+      )}
+
+      {/* DASHBOARD */}
+      {view==="dashboard"&&(
+        <div style={{padding:16}}>
+          {/* Player card */}
+          <div style={{background:`linear-gradient(135deg, #16162a, ${currentPhase?.color||"#3a3a5c"}18)`,border:`1px solid ${currentPhase?.color||"#2e2e4a"}33`,borderRadius:12,padding:20,marginBottom:16}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16}}>
+              <div style={{flex:1}}>
+                <div style={{fontSize:28,fontWeight:900,letterSpacing:1,color:"#e8e8f0"}}>{player.name}</div>
+                {!editProfile?(
+                  <>
+                    <div style={{color:"#aaaacc",fontSize:13}}>{player.nationality} · {player.height}cm · {player.weight}kg</div>
+                    {currentPhase&&<div style={{color:currentPhase.color,fontSize:12,marginTop:4,letterSpacing:1,textTransform:"uppercase"}}>{currentPhase.flag} {currentPhase.label}</div>}
+                    <button onClick={()=>{setTempProfile({age:player.age,height:player.height,weight:player.weight,nationality:player.nationality});setEditProfile(true);}} style={{marginTop:8,background:"none",border:"1px solid #2e2e4a",borderRadius:6,color:"#8888aa",cursor:"pointer",fontSize:10,letterSpacing:1,textTransform:"uppercase",padding:"3px 10px",fontFamily:"'Barlow Condensed', sans-serif"}}>✏ Modifica profilo</button>
+                  </>
+                ):(
+                  <div style={{marginTop:8}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+                      <div><div style={{fontSize:9,color:"#8888aa",letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>Età</div><input type="number" style={{...inputStyle,padding:"5px 8px",fontSize:13}} value={tempProfile.age} onChange={e=>setTempProfile(p=>({...p,age:Number(e.target.value)}))} /></div>
+                      <div><div style={{fontSize:9,color:"#8888aa",letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>Cm</div><input type="number" style={{...inputStyle,padding:"5px 8px",fontSize:13}} value={tempProfile.height} onChange={e=>setTempProfile(p=>({...p,height:e.target.value}))} /></div>
+                      <div><div style={{fontSize:9,color:"#8888aa",letterSpacing:1,textTransform:"uppercase",marginBottom:3}}>Kg</div><input type="number" style={{...inputStyle,padding:"5px 8px",fontSize:13}} value={tempProfile.weight} onChange={e=>setTempProfile(p=>({...p,weight:e.target.value}))} /></div>
+                    </div>
+                    <select style={{...inputStyle,padding:"5px 8px",fontSize:13,marginBottom:8}} value={tempProfile.nationality} onChange={e=>setTempProfile(p=>({...p,nationality:e.target.value}))}>
+                      {NATS.map(n=><option key={n}>{n}</option>)}
+                    </select>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={()=>setEditProfile(false)} style={{...btnStyle("#555"),flex:1}}>Annulla</button>
+                      <button onClick={()=>{updatePlayer(prev=>({...prev,...tempProfile}));setEditProfile(false);}} style={{...btnStyle("#22c55e"),flex:1}}>Salva</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <OvrBadge value={player.attrs.overall} color={currentPhase?.color} />
+            </div>
+            {/* Key stats */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:8}}>
+              {[["3PT",player.attrs.trePunti],["PAS",player.attrs.passaggio],["DEF",player.attrs.difesaPerimetro],["SPD",player.attrs.velocita],["BH",player.attrs.controlloPalla]].map(([l,v])=>(
+                <div key={l} style={{textAlign:"center"}}>
+                  <div style={{fontSize:20,fontWeight:900,color:currentPhase?.color||"#f59e0b"}}>{v}</div>
+                  <div style={{fontSize:10,color:"#8888aa",letterSpacing:1}}>{l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick actions */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+            {[
+              {label:"Aggiungi Stagione",icon:"📅",action:()=>{setNewSeason(p=>({...p,phase:player.currentPhase||""}));setView("addSeason");}},
+              {label:"Scrivi Diario",icon:"✍️",action:()=>{setNewEntry(p=>({...p,phase:player.currentPhase||""}));setView("addDiary");}},
+              {label:"Aggiorna Attributi",icon:"📊",action:()=>{setTempAttrs({...player.attrs});setAttrEdit(true);setView("attrs");}},
+              {label:"Sblocca Fase",icon:"🗺️",action:()=>setShowAddPhase(true)},
+            ].map(a=>(
+              <button key={a.label} onClick={a.action} style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:10,padding:"14px 12px",color:"#e8e8f0",cursor:"pointer",textAlign:"left",fontFamily:"'Barlow Condensed', sans-serif",fontSize:13,fontWeight:600}}>
+                <div style={{fontSize:22,marginBottom:6}}>{a.icon}</div>{a.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Punti sviluppo */}
+          <div style={{background:"#16162a",border:"1px solid #f59e0b44",borderRadius:12,padding:14,marginBottom:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div>
+              <div style={{fontSize:10,color:"#f59e0b",letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Punti Sviluppo</div>
+              <div style={{fontSize:36,fontWeight:900,color:"#f59e0b"}}>{player.devPoints||0}</div>
+            </div>
+            <button onClick={()=>setSpendPoints(true)} style={{...btnStyle("#f59e0b"),fontSize:13,padding:"10px 16px"}}>💪 Spendi</button>
+          </div>
+
+          {/* Ultimi eventi diario */}
+          {player.diary.length>0&&(
+            <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16}}>
+              <div style={{fontSize:10,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Ultimi eventi</div>
+              {[...player.diary].reverse().slice(0,3).map(e=>(
+                <div key={e.id} style={{display:"flex",gap:10,marginBottom:10,alignItems:"flex-start"}}>
+                  <span style={{fontSize:18}}>{e.emoji}</span>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e8e8f0"}}>{e.title}</div>
+                    <div style={{fontSize:11,color:"#8888aa"}}>{ALL_PHASES.find(p=>p.id===e.phase)?.label||e.phase} · {e.date}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button onClick={()=>{if(window.confirm("Ricominciare da capo?")){{localStorage.removeItem(SAVE_KEY);setPlayer(null);setView("setup");}}}} style={{width:"100%",marginTop:12,padding:"10px",background:"transparent",border:"1px solid #1e1e32",borderRadius:8,color:"#444466",cursor:"pointer",fontSize:11,letterSpacing:2,textTransform:"uppercase",fontFamily:"'Barlow Condensed', sans-serif"}}>
+            ⚠ Ricomincia da capo
+          </button>
+        </div>
+      )}
+
+      {/* OBIETTIVI */}
+      {view==="objectives"&&(
+        <div style={{padding:16}}>
+          {/* Spendi punti modal */}
+          {spendPoints&&(
+            <div style={{background:"#16162a",border:"1px solid #f59e0b44",borderRadius:12,padding:16,marginBottom:16}}>
+              <div style={{fontSize:13,color:"#f59e0b",letterSpacing:1,marginBottom:12,fontWeight:700}}>SPENDI PUNTI SVILUPPO ({player.devPoints||0} disponibili)</div>
+              <label style={labelStyle}>Attributo</label>
+              <select style={inputStyle} value={spendAttr} onChange={e=>setSpendAttr(e.target.value)}>
+                {Object.keys(ATTR_LABELS).map(k=><option key={k} value={k}>{ATTR_LABELS[k]} (attuale: {player.attrs[k]||60})</option>)}
+              </select>
+              <label style={labelStyle}>Quanti punti</label>
+              <input type="number" min="1" max={player.devPoints||0} style={inputStyle} value={spendAmt} onChange={e=>setSpendAmt(Number(e.target.value))} />
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>setSpendPoints(false)} style={{...btnStyle("#555"),flex:1}}>Annulla</button>
+                <button onClick={spendDev} style={{...btnStyle("#22c55e"),flex:1}}>+{spendAmt} a {ATTR_LABELS[spendAttr]}</button>
+              </div>
+            </div>
+          )}
+
+          {/* Obiettivi partita */}
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>🎯 Obiettivi Prossima Partita</div>
+            {(player.currentObjectives||getRandObjs()).map((obj,i)=>(
+              <div key={obj.id} style={{background:"#0d0d1a",borderRadius:8,padding:12,marginBottom:8,border:`1px solid ${i===0?"#f97316":"#3b82f6"}22`}}>
+                <div style={{fontSize:14,fontWeight:700,color:i===0?"#f97316":"#3b82f6"}}>{i===0?"⚔️ Offensivo":"🛡️ Difensivo"}</div>
+                <div style={{fontSize:13,color:"#e8e8f0",marginTop:2}}>{obj.label}</div>
+                <div style={{fontSize:10,color:"#8888aa",marginTop:2}}>{obj.reward}</div>
+              </div>
+            ))}
+            <button onClick={()=>updatePlayer(prev=>({...prev,currentObjectives:getRandObjs()}))} style={{...btnStyle("#3a3a5c"),width:"100%",marginTop:4,fontSize:11}}>🔀 Rigenera obiettivi</button>
+          </div>
+
+          {/* Registra partita */}
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>📝 Registra Partita</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+              {[["pts","Punti"],["ast","Assist"],["reb","Rimbalzi"],["stl","Steal"],["to","Turnover"],["fgPct","FG%"],["threesMade","Triple"],["min","Minuti"],["plusMinus","+/-"]].map(([k,l])=>(
+                <div key={k}><label style={{...labelStyle,marginTop:4}}>{l}</label><input type="number" style={{...inputStyle,padding:"6px 8px",fontSize:13}} value={matchPerf[k]} onChange={e=>setMatchPerf(p=>({...p,[k]:e.target.value}))} placeholder="—" /></div>
+              ))}
+            </div>
+            <div style={{marginTop:12}}>
+              <div style={{fontSize:11,color:"#8888aa",letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>Obiettivi completati?</div>
+              {(player.currentObjectives||[]).map((obj,i)=>(
+                <div key={obj.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+                  <button onClick={()=>setMatchPerf(p=>({...p,[`obj${i+1}done`]:!p[`obj${i+1}done`]}))} style={{width:24,height:24,borderRadius:4,border:`1px solid ${matchPerf[`obj${i+1}done`]?"#22c55e":"#2e2e4a"}`,background:matchPerf[`obj${i+1}done`]?"#22c55e22":"transparent",cursor:"pointer",fontSize:14,color:"#22c55e"}}>
+                    {matchPerf[`obj${i+1}done`]?"✓":""}
+                  </button>
+                  <span style={{fontSize:12,color:"#aaaacc"}}>{obj.label}</span>
+                </div>
+              ))}
+            </div>
+            <button onClick={submitMatch} style={{...btnStyle("#f59e0b"),width:"100%",marginTop:12,padding:"12px 0",fontSize:14}}>REGISTRA E CALCOLA PUNTI</button>
+          </div>
+
+          {/* Premi stagionali */}
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>🏆 Premi Stagionali</div>
+            {SEASONAL_AWARDS.map(award=>{
+              const tier=BADGE_TIER[award.badge];
+              const already=(player.awardBadges||[]).some(b=>b.id===award.id&&b.phase===player.currentPhase);
+              return (
+                <div key={award.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,background:"#0d0d1a",borderRadius:8,padding:"10px 12px"}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:"#e8e8f0"}}>{tier.emoji} {award.label}</div>
+                    <div style={{fontSize:10,color:tier.color}}>Badge {tier.label}{award.pts>0?` · +${award.pts} punti`:""}</div>
+                  </div>
+                  <button onClick={()=>!already&&addAward(award)} style={{...btnStyle(already?"#333":tier.color),fontSize:10,padding:"5px 10px",opacity:already?0.5:1,cursor:already?"default":"pointer"}}>
+                    {already?"✓ Vinto":"Assegna"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Badge vinti */}
+          {(player.awardBadges||[]).length>0&&(
+            <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16,marginBottom:16}}>
+              <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>🎖 Badge Vinti ({player.awardBadges.length})</div>
+              {[...player.awardBadges].reverse().map((b,i)=>{
+                const tier=BADGE_TIER[b.badge];
+                const ph=ALL_PHASES.find(p=>p.id===b.phase);
+                return (<div key={i} style={{display:"flex",gap:10,alignItems:"center",marginBottom:8}}><span style={{fontSize:20}}>{tier.emoji}</span><div><div style={{fontSize:13,fontWeight:700,color:"#e8e8f0"}}>{b.label}</div><div style={{fontSize:10,color:"#8888aa"}}>{ph?.label||b.phase} · {b.date}</div></div></div>);
+              })}
+            </div>
+          )}
+
+          {/* Storico partite */}
+          {(player.matchLog||[]).length>0&&(
+            <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16}}>
+              <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>📋 Ultime Partite</div>
+              {[...player.matchLog].reverse().slice(0,5).map((m,i)=>(
+                <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,padding:"8px 10px",background:"#0d0d1a",borderRadius:8}}>
+                  <div><span style={{fontWeight:700,color:"#e8e8f0",fontSize:13}}>{m.pts} PTS</span><span style={{color:"#8888aa",fontSize:12}}> · {m.ast} AST · {m.reb} REB</span><div style={{fontSize:10,color:"#8888aa",marginTop:2}}>{m.date}</div></div>
+                  <div style={{fontSize:16,fontWeight:900,color:m.result==="penalty"?"#ef4444":"#22c55e"}}>{m.result==="penalty"?"-2":`+${m.earned}`}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ATTRIBUTI */}
+      {view==="attrs"&&(
+        <div style={{padding:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h2 style={{fontSize:20,letterSpacing:2,textTransform:"uppercase",color:"#e8e8f0"}}>Attributi</h2>
+            <div style={{display:"flex",gap:8}}>
+              {!attrEdit?<button onClick={()=>{setTempAttrs({...player.attrs});setAttrEdit(true);}} style={btnStyle("#f59e0b")}>Modifica</button>
+              :<><button onClick={()=>setAttrEdit(false)} style={btnStyle("#555")}>Annulla</button><button onClick={saveAttrs} style={btnStyle("#22c55e")}>Salva</button></>}
+            </div>
+          </div>
+
+          {!attrEdit&&(
+            <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:10,padding:12,marginBottom:12,display:"flex",alignItems:"center",gap:12}}>
+              <OvrBadge value={player.attrs.overall} color={currentPhase?.color} />
+              <div>
+                <div style={{fontSize:13,color:"#aaaacc"}}>Overall — media di tutti gli attributi</div>
+                <div style={{fontSize:11,color:"#8888aa",marginTop:4}}>Punti sviluppo disponibili: <strong style={{color:"#f59e0b"}}>{player.devPoints||0}</strong></div>
+              </div>
+            </div>
+          )}
+
+          {ATTR_GROUPS.map(g=>(
+            <div key={g.label} style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:10,padding:14,marginBottom:10}}>
+              <div style={{fontSize:11,color:g.color,letterSpacing:2,textTransform:"uppercase",marginBottom:10,fontWeight:700}}>{g.label}</div>
+              {g.keys.map(k=>(
+                <div key={k} style={{marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
+                    <span style={{fontSize:12,color:"#ccccee"}}>{ATTR_LABELS[k]}</span>
+                    {attrEdit
+                      ?<input type="number" min="25" max="99" value={tempAttrs[k]||""} onChange={e=>setTempAttrs(p=>({...p,[k]:Number(e.target.value)}))} style={{width:48,background:"#0d0d1a",border:"1px solid #2e2e4a",borderRadius:4,color:"#e8e8f0",textAlign:"center",fontSize:12,fontFamily:"'Barlow Condensed', sans-serif",padding:"2px 0"}} />
+                      :<span style={{fontSize:14,fontWeight:700,color:(player.attrs[k]||60)>=80?"#22c55e":(player.attrs[k]||60)>=70?"#f59e0b":"#aaaacc"}}>{player.attrs[k]||60}</span>
+                    }
+                  </div>
+                  <StatBar value={attrEdit?(tempAttrs[k]||0):(player.attrs[k]||60)} color={g.color} />
+                </div>
+              ))}
+            </div>
+          ))}
+
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:10,padding:14}}>
+            <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Badge 2K ({player.badges.length})</div>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+              {BADGE_LIST.map(b=>(
+                <button key={b} onClick={()=>toggleBadge(b)} style={{padding:"5px 10px",borderRadius:20,border:`1px solid ${player.badges.includes(b)?"#f59e0b":"#2e2e4a"}`,background:player.badges.includes(b)?"#f59e0b22":"transparent",color:player.badges.includes(b)?"#f59e0b":"#666688",fontSize:11,cursor:"pointer",fontFamily:"'Barlow Condensed', sans-serif"}}>{b}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STAGIONI */}
+      {view==="seasons"&&(
+        <div style={{padding:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h2 style={{fontSize:20,letterSpacing:2,textTransform:"uppercase",color:"#e8e8f0"}}>Stagioni</h2>
+            <button onClick={()=>{setNewSeason(p=>({...p,phase:player.currentPhase||""}));setView("addSeason");}} style={btnStyle("#f59e0b")}>+ Aggiungi</button>
+          </div>
+          {Object.keys(player.seasons).length===0&&(
+            <div style={{textAlign:"center",padding:48,color:"#444466"}}><div style={{fontSize:40,marginBottom:10}}>📅</div><div style={{fontSize:14}}>Nessuna stagione ancora.</div></div>
+          )}
+          {ALL_PHASES.map(ph=>{
+            const pSeasons=Object.entries(player.seasons).filter(([k])=>k.startsWith(ph.id));
+            if(pSeasons.length===0) return null;
+            return (
+              <div key={ph.id} style={{marginBottom:20}}>
+                <div style={{fontSize:12,color:ph.color,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>{ph.flag} {ph.label}</div>
+                {pSeasons.map(([k,s])=>(
+                  <div key={k} style={{background:"#16162a",border:`1px solid ${ph.color}33`,borderRadius:10,padding:14,marginBottom:8}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                      <div><div style={{fontSize:15,fontWeight:700,color:"#e8e8f0"}}>{s.team||"Squadra"}</div><div style={{fontSize:11,color:"#8888aa"}}>{s.year||"—"}</div></div>
+                      <div style={{fontSize:11,color:"#8888aa"}}>{s.gp||"—"} GP</div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
+                      {[["PTS",s.pts],["REB",s.reb],["AST",s.ast],["STL",s.stl],["FG%",s.fg]].map(([l,v])=>(
+                        <div key={l} style={{textAlign:"center"}}><div style={{fontSize:17,fontWeight:700,color:ph.color}}>{v||"—"}</div><div style={{fontSize:10,color:"#666688"}}>{l}</div></div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* DIARIO */}
+      {view==="diary"&&(
+        <div style={{padding:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h2 style={{fontSize:20,letterSpacing:2,textTransform:"uppercase",color:"#e8e8f0"}}>Diario</h2>
+            <button onClick={()=>{setNewEntry(p=>({...p,phase:player.currentPhase||""}));setView("addDiary");}} style={btnStyle("#f59e0b")}>+ Evento</button>
+          </div>
+          {player.diary.length===0&&(
+            <div style={{textAlign:"center",padding:48,color:"#444466"}}><div style={{fontSize:40,marginBottom:10}}>📖</div><div style={{fontSize:14}}>Il diario è vuoto.</div></div>
+          )}
+          {ALL_PHASES.map(ph=>{
+            const entries=player.diary.filter(e=>e.phase===ph.id);
+            if(entries.length===0) return null;
+            return (
+              <div key={ph.id} style={{marginBottom:28}}>
+                <div style={{fontSize:12,color:ph.color,letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>{ph.flag} {ph.label}</div>
+                <div style={{borderLeft:`2px solid ${ph.color}44`,paddingLeft:18}}>
+                  {entries.map(e=>(
+                    <div key={e.id} style={{marginBottom:18,position:"relative"}}>
+                      <div style={{position:"absolute",left:-24,top:0,fontSize:18}}>{e.emoji}</div>
+                      <div style={{fontSize:14,fontWeight:700,color:"#e8e8f0",marginBottom:3}}>{e.title}</div>
+                      {e.text&&<div style={{fontSize:12,color:"#aaaacc",lineHeight:1.6,fontFamily:"'Barlow', sans-serif"}}>{e.text}</div>}
+                      <div style={{fontSize:10,color:"#666688",marginTop:4}}>{e.date}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* AGENTE */}
+      {view==="agent"&&(
+        <div style={{padding:16}}>
+          <h2 style={{fontSize:20,letterSpacing:2,textTransform:"uppercase",color:"#e8e8f0",marginBottom:16}}>Agente</h2>
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Profilo Agente</div>
+            {[["name","Nome agente"],["agency","Agenzia"],["commission","Commissione %"],["since","Dal"],["note","Note"]].map(([k,l])=>(
+              <div key={k}><label style={labelStyle}>{l}</label><input style={inputStyle} value={player.agent?.[k]||""} onChange={e=>updatePlayer(prev=>({...prev,agent:{...prev.agent,[k]:e.target.value}}))} /></div>
+            ))}
+            <label style={labelStyle}>Livello</label>
+            <select style={inputStyle} value={player.agent?.level||"Piccolo"} onChange={e=>updatePlayer(prev=>({...prev,agent:{...prev.agent,level:e.target.value}}))}>
+              {["Piccolo","Medio","Top Agency"].map(l=><option key={l}>{l}</option>)}
+            </select>
+          </div>
+
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Squadre Interessate</div>
+            {(player.interests||[]).length===0&&<div style={{color:"#444466",fontSize:13,marginBottom:12}}>Nessuna squadra ancora.</div>}
+            {(player.interests||[]).map((t,i)=>(
+              <div key={i} style={{background:"#0d0d1a",borderRadius:8,padding:10,marginBottom:8}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#e8e8f0"}}>{t.team}</div>
+                <div style={{fontSize:11,color:"#8888aa"}}>{t.league} · {t.status} · {t.offer||"—"}</div>
+              </div>
+            ))}
+            <button onClick={()=>{const team=prompt("Squadra:");const league=prompt("Lega:");const status=prompt("Stato (Interesse/Trattativa/Offerta/Firmato/Rifiutato):");const offer=prompt("Offerta economica (opzionale):");if(team)updatePlayer(prev=>({...prev,interests:[...(prev.interests||[]),{team,league,status,offer}]}));}} style={{...btnStyle("#3b82f6"),width:"100%",marginTop:4}}>+ Aggiungi squadra</button>
+          </div>
+
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16,marginBottom:16}}>
+            <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Sponsorships</div>
+            {(player.sponsorships||[]).length===0&&<div style={{color:"#444466",fontSize:13,marginBottom:12}}>Nessuno sponsor ancora.</div>}
+            {(player.sponsorships||[]).map((s,i)=>(
+              <div key={i} style={{background:"#0d0d1a",borderRadius:8,padding:10,marginBottom:8}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#e8e8f0"}}>{s.brand}</div>
+                <div style={{fontSize:11,color:"#8888aa"}}>{s.type} · {s.value||"—"}/anno</div>
+              </div>
+            ))}
+            <button onClick={()=>{const brand=prompt("Brand:");const type=prompt("Tipo (Scarpe/Abbigliamento/Energy Drink/Altro):");const value=prompt("Valore annuo:");if(brand)updatePlayer(prev=>({...prev,sponsorships:[...(prev.sponsorships||[]),{brand,type,value}]}));}} style={{...btnStyle("#f97316"),width:"100%",marginTop:4}}>+ Aggiungi sponsor</button>
+          </div>
+
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:16}}>
+            <div style={{fontSize:11,color:"#8888aa",letterSpacing:2,textTransform:"uppercase",marginBottom:12}}>Eventi & Apparizioni</div>
+            {(player.events||[]).length===0&&<div style={{color:"#444466",fontSize:13,marginBottom:12}}>Nessun evento ancora.</div>}
+            {(player.events||[]).map((e,i)=>(
+              <div key={i} style={{background:"#0d0d1a",borderRadius:8,padding:10,marginBottom:8}}>
+                <div style={{fontSize:14,fontWeight:700,color:"#e8e8f0"}}>{e.title}</div>
+                <div style={{fontSize:11,color:"#8888aa"}}>{e.type} · {e.date} · {e.location}</div>
+              </div>
+            ))}
+            <button onClick={()=>{const title=prompt("Titolo evento:");const type=prompt("Tipo (Intervista/Camp/Charity/Pubblicità/Firma autografi):");const date=prompt("Data:");const location=prompt("Luogo:");if(title)updatePlayer(prev=>({...prev,events:[...(prev.events||[]),{title,type,date,location}]}));}} style={{...btnStyle("#8b5cf6"),width:"100%",marginTop:4}}>+ Aggiungi evento</button>
+          </div>
+        </div>
+      )}
+
+      {/* ADD SEASON */}
+      {view==="addSeason"&&(
+        <div style={{padding:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+            <button onClick={()=>setView("seasons")} style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontSize:22}}>←</button>
+            <h2 style={{fontSize:20,letterSpacing:2,textTransform:"uppercase",color:"#e8e8f0"}}>Nuova Stagione</h2>
+          </div>
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:20}}>
+            <label style={labelStyle}>Fase</label>
+            <select style={inputStyle} value={newSeason.phase} onChange={e=>setNewSeason(p=>({...p,phase:e.target.value}))}>
+              <option value="">— Seleziona —</option>
+              {ALL_PHASES.map(ph=><option key={ph.id} value={ph.id}>{ph.flag} {ph.label}</option>)}
+            </select>
+            <label style={labelStyle}>Squadra</label>
+            <input style={inputStyle} placeholder="Es. Guangzhou Loong Lions" value={newSeason.team} onChange={e=>setNewSeason(p=>({...p,team:e.target.value}))} />
+            <label style={labelStyle}>Anno / Stagione</label>
+            <input style={inputStyle} placeholder="Es. 2026-27" value={newSeason.year} onChange={e=>setNewSeason(p=>({...p,year:e.target.value}))} />
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              {[["gp","Partite (GP)"],["pts","Punti (PPG)"],["reb","Rimbalzi (RPG)"],["ast","Assist (APG)"],["stl","Steal (SPG)"],["blk","Block (BPG)"],["to","Turnover (TPG)"],["fg","FG%"],["three","3P%"],["ft","FT%"]].map(([k,l])=>(
+                <div key={k}><label style={{...labelStyle,marginTop:4}}>{l}</label><input style={inputStyle} placeholder="—" value={newSeason[k]} onChange={e=>setNewSeason(p=>({...p,[k]:e.target.value}))} /></div>
+              ))}
+            </div>
+            <button onClick={addSeason} style={{...btnStyle("#f59e0b"),width:"100%",marginTop:16,padding:"13px 0",fontSize:15}}>SALVA STAGIONE</button>
+          </div>
+        </div>
+      )}
+
+      {/* ADD DIARY */}
+      {view==="addDiary"&&(
+        <div style={{padding:16}}>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+            <button onClick={()=>setView("diary")} style={{background:"none",border:"none",color:"#f59e0b",cursor:"pointer",fontSize:22}}>←</button>
+            <h2 style={{fontSize:20,letterSpacing:2,textTransform:"uppercase",color:"#e8e8f0"}}>Nuovo Evento</h2>
+          </div>
+          <div style={{background:"#16162a",border:"1px solid #2e2e4a",borderRadius:12,padding:20}}>
+            <label style={labelStyle}>Fase</label>
+            <select style={inputStyle} value={newEntry.phase} onChange={e=>setNewEntry(p=>({...p,phase:e.target.value}))}>
+              <option value="">— Seleziona —</option>
+              {ALL_PHASES.map(ph=><option key={ph.id} value={ph.id}>{ph.flag} {ph.label}</option>)}
+            </select>
+            <label style={labelStyle}>Emoji</label>
+            <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:4}}>
+              {EMOJIS.map(em=>(
+                <button key={em} onClick={()=>setNewEntry(p=>({...p,emoji:em}))} style={{width:38,height:38,fontSize:20,borderRadius:8,border:`1px solid ${newEntry.emoji===em?"#f59e0b":"#2e2e4a"}`,background:newEntry.emoji===em?"#f59e0b22":"#0d0d1a",cursor:"pointer"}}>{em}</button>
+              ))}
+            </div>
+            <label style={labelStyle}>Titolo</label>
+            <input style={inputStyle} placeholder="Es. Prima partita da professionista" value={newEntry.title} onChange={e=>setNewEntry(p=>({...p,title:e.target.value}))} />
+            <label style={labelStyle}>Descrizione (opzionale)</label>
+            <textarea style={{...inputStyle,height:96,resize:"vertical"}} placeholder="Racconta come è andata..." value={newEntry.text} onChange={e=>setNewEntry(p=>({...p,text:e.target.value}))} />
+            <button onClick={addDiary} style={{...btnStyle("#f59e0b"),width:"100%",marginTop:16,padding:"13px 0",fontSize:15}}>SALVA EVENTO</button>
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM NAV */}
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0d0d1a",borderTop:"1px solid #2e2e4a",display:"flex"}}>
+        {navItems.map(n=>(
+          <button key={n.id} onClick={()=>setView(n.id)} style={{flex:1,padding:"10px 0 8px",background:"none",border:"none",color:(view===n.id||((view==="addSeason"||view==="addDiary")&&n.id==="diary"))?"#f59e0b":"#444466",cursor:"pointer",fontFamily:"'Barlow Condensed', sans-serif",fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>
+            <div style={{fontSize:20}}>{n.icon}</div>{n.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
